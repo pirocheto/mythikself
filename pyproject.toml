@@ -1,0 +1,52 @@
+[project]
+name = "App"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "advanced-alchemy>=1.4.4",
+    "aiosqlite>=0.21.0",
+    "fastapi[standard]>=0.115.13",
+    "httpx>=0.28.1",
+    "pydantic-settings>=2.9.1",
+    "sqlalchemy>=2.0.41",
+]
+
+[dependency-groups]
+dev = []
+
+
+[tool.mypy]
+strict = true
+exclude = [".venv", "alembic"]
+
+
+[tool.ruff]
+target-version = "py313"
+exclude = ["alembic", ".venv"]
+line-length = 119
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+    # "ARG001", # unused arguments in functions
+]
+
+ignore = [
+    "B008",   # do not perform function calls in argument defaults
+    "B904",   # Allow raising exceptions without from e, for HTTPException
+    "ANN201", # Ignore missing return type annotation for functions
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: mark test as an integration test",
+    "unit: mark test as a unit test",
+]
