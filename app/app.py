@@ -1,26 +1,47 @@
-from fastapi import FastAPI
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
-from app.db.config import alchemy
-from app.domains.users import routes as user_routes
+from fastapi import FastAPI
+from fastapi.routing import APIRoute
+from starlette.middleware.cors import CORSMiddleware
+
+from app.api.main import api_router
+from app.config import get_settings
+from app.db.config import init_db
+
+settings = get_settings()
+
+
+def custom_generate_unique_id(route: APIRoute) -> str:
+    prefix = "-".join([str(tag) for tag in route.tags])
+    return f"{prefix}-{route.name}"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    await init_db()
+    yield
 
 
 def init_app() -> FastAPI:
-    """
-    Initialize the FastAPI application with database configuration.
-    This function sets up the application and registers the database connection.
-    """
+    """Initialize the FastAPI application."""
+
     app = FastAPI(
-        title="FastAPI Example",
-        description="A simple FastAPI application example.",
-        version="1.0.0",
+        title=settings.PROJECT_NAME,
+        generate_unique_id_function=custom_generate_unique_id,
+        lifespan=lifespan,
     )
 
-    # Add routers
-    app.include_router(user_routes.router)
+    if settings.all_cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.all_cors_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
-    # Other registrations
-    alchemy.init_app(app=app)
-
+    app.include_router(api_router)
     return app
 
 

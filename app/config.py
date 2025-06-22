@@ -36,25 +36,25 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # The root directory of the application
     app_dir: Path = root_dir / "app"
+    """The root directory of the application, used for file paths."""
 
-    # Secret key to encode/decode JWT tokens
-    # This should be kept secret in production
     SECRET_KEY: str = secrets.token_urlsafe(32)
+    """The secret key used for encoding and decoding JWT tokens."""
 
-    # The host for the frontend application
-    # This is used for emails
     FRONTEND_HOST: str = "http://localhost:5173"
+    """The host for the frontend application, used for emails and redirects."""
 
-    # The host for documentation and iss in JWT tokens
     BACKEND_HOST: str = "http://localhost:8000"
+    """The host for the backend application, used for documentation"""
 
     # The environment the application is running in
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"
+    """The environment the application is running in, used for configuration."""
 
     # Allow backend to be accessed from given origins
     BACKEND_CORS_ORIGINS: Annotated[list[AnyUrl] | str, BeforeValidator(parse_cors)] = []
+    """The CORS origins allowed for the backend application."""
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -64,40 +64,41 @@ class Settings(BaseSettings):
         """
         return [str(origin).rstrip("/") for origin in self.BACKEND_CORS_ORIGINS] + [self.FRONTEND_HOST]
 
-    # The name of the project
     PROJECT_NAME: str = "App"
-
-    # The database configuration
-    # POSTGRES_SERVER: str
-    # POSTGRES_PORT: int = 5432
-    # POSTGRES_USER: str
-    # POSTGRES_PASSWORD: str = ""
-    # POSTGRES_DB: str = ""
-
-    # @computed_field  # type: ignore[prop-decorator]
-    # @property
-    # def SQLALCHEMY_DATABASE_URI(self) -> MultiHostUrl:  # noqa: N802
-    #     """Build the SQLAlchemy database URI from the settings"""
-    #     return MultiHostUrl.build(
-    #         scheme="postgresql+asyncpg",
-    #         username=self.POSTGRES_USER,
-    #         password=self.POSTGRES_PASSWORD,
-    #         host=self.POSTGRES_SERVER,
-    #         port=self.POSTGRES_PORT,
-    #         path=self.POSTGRES_DB,
-    #     )
+    """The name of the project, used in emails and documentation."""
 
     SQLALCHEMY_DATABASE_URI: str = "sqlite+aiosqlite:///database.sqlite"
+    """The SQLAlchemy database URI for the application."""
 
     # The API key for the Resend service
     RESEND_API_KEY: str | None = None
+    """The API key for the Resend service, used for sending emails."""
 
-    # The email address to send test emails to
     EMAILS_TEST_RECIPIENT: EmailStr = "test@example.com"
-
-    # The information about the sender of the emails
+    """The email address to send test emails to"""
     EMAILS_FROM_EMAIL: EmailStr | None = None
+    """The email address of the sender of the emails"""
     EMAILS_FROM_NAME: str | None = None
+    """The name of the sender of the emails"""
+
+    REPLICATE_API_KEY: str = "your-replicate-api-key"
+    """The API key for the Replicate service, used for AI model inference."""
+
+    GOOGLE_OAUTH2_CLIENT_ID: str = "your-google-client-id"
+    """Google OAuth2 client ID for authentication."""
+    GOOGLE_OAUTH2_CLIENT_SECRET: str = "your-google-client-secret"
+    """Google OAuth2 client secret for authentication."""
+    GOOGLE_OAUTH2_REDIRECT_URI: str = "http://localhost:8000/auth/google/callback"
+    """Google OAuth2 redirect URI for authentication."""
+
+    SCW_ACCESS_KEY: str = "your-scaleway-access-key"
+    """Your Scaleway access key."""
+    SCW_SECRET_KEY: str = "your-scaleway-secret-key"
+    """Your Scaleway secret key."""
+    S3_STORAGE_URI: str = "s3://your-bucket/"
+    """The URI for the S3 storage bucket, e.g., s3://your-bucket/"""
+    S3_ENDPOINT_URL: str = "https://s3.example.com"
+    """The endpoint URL for the S3 storage, e.g., https://s3.example.com"""
 
     @model_validator(mode="after")
     def _set_default_emails_from(self) -> Self:
@@ -105,36 +106,10 @@ class Settings(BaseSettings):
             self.EMAILS_FROM_NAME = self.PROJECT_NAME
         return self
 
-    @computed_field  # type: ignore[prop-decorator]
     @property
+    @computed_field
     def emails_enabled(self) -> bool:
         return bool(self.RESEND_API_KEY and self.EMAILS_FROM_EMAIL)
-
-    def _check_default_secret(self, var_name: str, value: str | None) -> None:
-        """
-        Check if the given secret is set to the default value
-        and raise an error if it is.
-        """
-        if value == "changethis":
-            message = (
-                f'The value of {var_name} is "changethis", for security, please change it, at least for deployments.'
-            )
-            if self.ENVIRONMENT == "local":
-                logger.warning(message)
-            else:
-                raise ValueError(message)
-
-    # @model_validator(mode="after")
-    # def _enforce_non_default_secrets(self) -> Self:
-    #     """
-    #     Check if the given secrets are set to the default value
-    #     and raise an error if they are.
-    #     """
-    #     self._check_default_secret("POSTGRES_PASSWORD", self.POSTGRES_PASSWORD)
-    #     return self
-
-    GOOGLE_OAUTH2_CLIENT_ID: str = "<your-client-id>"
-    GOOGLE_OAUTH2_CLIENT_SECRET: str = "<your-client-secret>"
 
 
 @lru_cache

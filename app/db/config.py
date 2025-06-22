@@ -1,15 +1,19 @@
-from advanced_alchemy.extensions.fastapi import AdvancedAlchemy, AsyncSessionConfig, SQLAlchemyAsyncConfig
+from sqlalchemy.ext.asyncio import create_async_engine
 
-from app.config.settings import get_settings
+from app.config import get_settings
 
 settings = get_settings()
 
 
-sqlalchemy_config = SQLAlchemyAsyncConfig(
-    connection_string=settings.SQLALCHEMY_DATABASE_URI,
-    session_config=AsyncSessionConfig(expire_on_commit=False),
-    create_all=True,
-    commit_mode="autocommit",
+engine = create_async_engine(
+    str(settings.SQLALCHEMY_DATABASE_URI),
+    echo=False,
+    future=True,
 )
 
-alchemy = AdvancedAlchemy(config=sqlalchemy_config)
+
+async def init_db() -> None:
+    from app.db.models import Base
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
