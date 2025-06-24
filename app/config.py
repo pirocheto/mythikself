@@ -11,9 +11,10 @@ from pydantic import (
     computed_field,
     model_validator,
 )
+from pydantic_core import MultiHostUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-root_dir = Path(__file__).resolve().parents[2]  # Adjust to your project structure
+root_dir = Path(__file__).resolve().parents[1]  # Adjust to your project structure
 
 
 logger = logging.getLogger(__name__)
@@ -67,8 +68,28 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "App"
     """The name of the project, used in emails and documentation."""
 
-    SQLALCHEMY_DATABASE_URI: str = "sqlite+aiosqlite:///database.sqlite"
-    """The SQLAlchemy database URI for the application."""
+    POSTGRES_SERVER: str
+    """The server address for the PostgreSQL database."""
+    POSTGRES_PORT: int = 5432
+    """The port for the PostgreSQL database."""
+    POSTGRES_USER: str
+    """The username for the PostgreSQL database."""
+    POSTGRES_PASSWORD: str = ""
+    """The password for the PostgreSQL database."""
+    POSTGRES_DATABASE: str = ""
+    """The name of the PostgreSQL database."""
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def SQLALCHEMY_DATABASE_URI(self) -> MultiHostUrl:
+        return MultiHostUrl.build(
+            scheme="postgresql+asyncpg",
+            username=self.POSTGRES_USER,
+            password=self.POSTGRES_PASSWORD,
+            host=self.POSTGRES_SERVER,
+            port=self.POSTGRES_PORT,
+            path=self.POSTGRES_DATABASE,
+        )
 
     # The API key for the Resend service
     RESEND_API_KEY: str | None = None
@@ -100,6 +121,11 @@ class Settings(BaseSettings):
     S3_ENDPOINT_URL: str = "https://s3.example.com"
     """The endpoint URL for the S3 storage, e.g., https://s3.example.com"""
 
+    REDIS_HOST: str = "localhost"
+    """The host for the Redis server."""
+    REDIS_PORT: int = 6379
+    """The port for the Redis server."""
+
     @model_validator(mode="after")
     def _set_default_emails_from(self) -> Self:
         if not self.EMAILS_FROM_NAME:
@@ -109,6 +135,7 @@ class Settings(BaseSettings):
     @property
     @computed_field
     def emails_enabled(self) -> bool:
+        """Check if email sending is enabled"""
         return bool(self.RESEND_API_KEY and self.EMAILS_FROM_EMAIL)
 
 
@@ -119,4 +146,4 @@ def get_settings() -> Settings:
     This is used to avoid reloading the settings
     every time they are accessed.
     """
-    return Settings()
+    return Settings()  # type: ignore

@@ -3,7 +3,7 @@ from typing import Annotated, Any
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +21,7 @@ router = APIRouter()
 
 
 @router.get("/login/google")
-def login_via_google(request: Request) -> RedirectResponse:
+def login_via_google() -> RedirectResponse:
     """Redirects the user to the Google authentication page."""
 
     params = {
@@ -36,9 +36,7 @@ def login_via_google(request: Request) -> RedirectResponse:
 
 
 @router.get("/auth/google/callback")
-async def auth_via_google(
-    request: Request, code: str, session: Annotated[AsyncSession, Depends(get_db)]
-) -> RedirectResponse:
+async def auth_via_google(code: str, session: Annotated[AsyncSession, Depends(get_db)]) -> RedirectResponse:
     """Handles the callback from Google after user authentication."""
 
     # =============== Get access token ================
@@ -116,7 +114,6 @@ async def auth_via_google(
 
 
 @router.get("/users/profile", response_model=UserProfile)
-async def get_profile(
-    current_user: Annotated[User, Depends(get_current_user)],
-) -> Any:
+async def get_profile(current_user: Annotated[User, Depends(get_current_user)]) -> Any:
+    """Returns the profile of the currently authenticated user."""
     return current_user

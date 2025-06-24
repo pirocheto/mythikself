@@ -6,7 +6,7 @@ from fastapi import Cookie, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.db.config import engine
+from app.db.config import SessionLocal
 from app.db.models import UserORM
 from app.mappers import user_mapper
 from app.models import User
@@ -15,7 +15,7 @@ settings = get_settings()
 
 
 async def get_db() -> AsyncGenerator[AsyncSession]:
-    async with AsyncSession(engine) as session:
+    async with SessionLocal() as session:
         yield session
 
 

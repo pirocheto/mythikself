@@ -1,13 +1,15 @@
-import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import AnyUrl, BaseModel, EmailStr
+from pydantic.types import UUID4
+
+from app.models import Status
 
 
 class UserProfile(BaseModel):
     """Schema for user profile information."""
 
-    id: uuid.UUID
+    id: UUID4
     email: EmailStr
     name: str
     picture: str
@@ -18,13 +20,14 @@ class UserProfile(BaseModel):
 class GenerationData(BaseModel):
     """Schema for a generation request."""
 
-    id: uuid.UUID
-    user_id: uuid.UUID
+    id: UUID4
+    user_id: UUID4
     prompt: str
     created_at: datetime
-    status: str
+    status: Status
     output_format: str
     ratio: str
+    image_path: AnyUrl | None = None
 
 
 class GenerationList(BaseModel):
@@ -34,8 +37,17 @@ class GenerationList(BaseModel):
     data: list[GenerationData]
 
 
+class GenerationStatus(BaseModel):
+    """Schema for the status of a generation request."""
+
+    id: UUID4
+    status: Status
+    error_message: str | None = None
+    image_path: AnyUrl | None = None
+
+
 class GenerationCreateResponse(BaseModel):
     """Schema for the response of a generation creation request."""
 
     message: str
-    generation_id: uuid.UUID
+    generation_id: UUID4
