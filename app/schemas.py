@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import AnyUrl, BaseModel, EmailStr
+from pydantic import AnyUrl, BaseModel, ConfigDict, EmailStr
 from pydantic.types import UUID4
 
 from app.models import Status
@@ -20,6 +20,8 @@ class UserProfile(BaseModel):
 class GenerationData(BaseModel):
     """Schema for a generation request."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID4
     user_id: UUID4
     prompt: str
@@ -27,7 +29,8 @@ class GenerationData(BaseModel):
     status: Status
     output_format: str
     ratio: str
-    image_path: AnyUrl | None = None
+    filename: str | None = None
+    preview_url: str | None = None
 
 
 class GenerationList(BaseModel):

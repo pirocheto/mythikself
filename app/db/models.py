@@ -53,7 +53,7 @@ class GenerationORM(Base):
     ratio: Mapped[Ratio] = mapped_column(Enum(Ratio), nullable=False)
     status: Mapped[Status] = mapped_column(Enum(Status), nullable=False)
     error_message: Mapped[str | None] = mapped_column(String(1024), nullable=True)
-    image_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    filename: Mapped[str | None] = mapped_column(String(1024), nullable=True)
 
     # Relationships
     user: Mapped[UserORM] = relationship("UserORM", back_populates="generations")

@@ -116,10 +116,19 @@ class Settings(BaseSettings):
     """Your Scaleway access key."""
     SCW_SECRET_KEY: str = "your-scaleway-secret-key"
     """Your Scaleway secret key."""
-    S3_STORAGE_URI: str = "s3://your-bucket/"
-    """The URI for the S3 storage bucket, e.g., s3://your-bucket/"""
-    S3_ENDPOINT_URL: str = "https://s3.example.com"
+    S3_BUCKET_NAME: str = "your-bucket"
+    """The name of the S3 bucket where files will be stored."""
+    S3_BUCKET_ENDPOINT: str = "https://s3.example.com"
     """The endpoint URL for the S3 storage, e.g., https://s3.example.com"""
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def S3_BUCKET_URL(self) -> str:
+        """
+        Construct the full URL for the S3 bucket.
+        This is used to access files stored in the bucket.
+        """
+        return f"{self.S3_BUCKET_ENDPOINT}/{self.S3_BUCKET_NAME}"
 
     REDIS_HOST: str = "localhost"
     """The host for the Redis server."""

@@ -1,15 +1,14 @@
 from datetime import UTC, datetime
 from typing import Annotated, Any
-from urllib.parse import urlencode
 
-import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, get_google_auth_provider
 from app.config import get_settings
+from app.core.auth import GoogleOAuth2Provider
 from app.db.models import UserORM
 from app.mappers import user_mapper
 from app.models import User
@@ -21,62 +20,26 @@ router = APIRouter()
 
 
 @router.get("/login/google")
-def login_via_google() -> RedirectResponse:
+def login_via_google(
+    google_auth_provider: Annotated[GoogleOAuth2Provider, Depends(get_google_auth_provider)],
+) -> RedirectResponse:
     """Redirects the user to the Google authentication page."""
 
-    params = {
-        "response_type": "code",
-        "client_id": settings.GOOGLE_OAUTH2_CLIENT_ID,
-        "redirect_uri": settings.GOOGLE_OAUTH2_REDIRECT_URI,
-        "scope": "openid email profile",
-    }
-    query_string = urlencode(params)
-    google_redirect_url = f"https://accounts.google.com/o/oauth2/auth?{query_string}"
-    return RedirectResponse(url=google_redirect_url)
+    return RedirectResponse(url=google_auth_provider.get_redirect_uri())
 
 
 @router.get("/auth/google/callback")
-async def auth_via_google(code: str, session: Annotated[AsyncSession, Depends(get_db)]) -> RedirectResponse:
+async def auth_via_google(
+    code: str,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    google_auth_provider: Annotated[GoogleOAuth2Provider, Depends(get_google_auth_provider)],
+) -> RedirectResponse:
     """Handles the callback from Google after user authentication."""
 
-    # =============== Get access token ================
-    async with httpx.AsyncClient() as client:
-        token_response = await client.post(
-            "https://oauth2.googleapis.com/token",
-            data={
-                "code": code,
-                "client_id": settings.GOOGLE_OAUTH2_CLIENT_ID,
-                "client_secret": settings.GOOGLE_OAUTH2_CLIENT_SECRET,
-                "grant_type": "authorization_code",
-                "redirect_uri": settings.GOOGLE_OAUTH2_REDIRECT_URI,
-            },
-        )
+    access_token = await google_auth_provider.get_access_token(code=code)
+    user_info = await google_auth_provider.get_profile(access_token)
 
-    if token_response.status_code != status.HTTP_200_OK:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to obtain access token",
-        )
-
-    response_data = token_response.json()
-    access_token = response_data["access_token"]
-
-    # =============== Get user info ==================
-    async with httpx.AsyncClient() as client:
-        user_info_response = await client.get(
-            "https://www.googleapis.com/oauth2/v2/userinfo",
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-    if user_info_response.status_code != status.HTTP_200_OK:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to obtain user information",
-        )
-    user_info = user_info_response.json()
-
-    # =============== Check if user exists and create if not ================
     async with session.begin():
-        # Check if user already exists in the database
         statement = select(UserORM).where(UserORM.google_id == user_info.get("id"))
         result = await session.execute(statement)
         user_orm = result.scalars().one_or_none()
@@ -101,7 +64,6 @@ async def auth_via_google(code: str, session: Annotated[AsyncSession, Depends(ge
 
         user_id = user_orm.id
 
-    # =============== Set user ID in cookie and redirect ================
     response = RedirectResponse("/users/profile")
     response.set_cookie(
         key="user_id",

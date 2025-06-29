@@ -6,12 +6,22 @@ from fastapi import Cookie, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.core.auth import GoogleOAuth2Provider
 from app.db.config import SessionLocal
 from app.db.models import UserORM
 from app.mappers import user_mapper
 from app.models import User
 
 settings = get_settings()
+
+
+async def get_google_auth_provider() -> GoogleOAuth2Provider:
+    """Provides an instance of GoogleOAuth2Provider for OAuth2 authentication."""
+    return GoogleOAuth2Provider(
+        client_id=settings.GOOGLE_OAUTH2_CLIENT_ID,
+        client_secret=settings.GOOGLE_OAUTH2_CLIENT_SECRET,
+        redirect_uri=settings.GOOGLE_OAUTH2_REDIRECT_URI,
+    )
 
 
 async def get_db() -> AsyncGenerator[AsyncSession]:

@@ -52,4 +52,4 @@ class Generation:
     output_format: OutputFormat = field(default=OutputFormat.PNG)
     ratio: Ratio = field(default=Ratio.RATIO_1_1)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    image_path: str | None = field(default=None)
+    filename: str | None = field(default=None)

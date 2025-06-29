@@ -11,7 +11,7 @@ def orm_to_domain(user_orm: GenerationORM) -> Generation:
         status=user_orm.status,
         output_format=user_orm.output_format,
         ratio=user_orm.ratio,
-        image_path=user_orm.image_path,
+        filename=user_orm.filename,
     )
 
 
@@ -24,5 +24,5 @@ def domain_to_orm(generation: Generation) -> GenerationORM:
         status=generation.status,
         output_format=generation.output_format,
         ratio=generation.ratio,
-        image_path=generation.image_path,
+        filename=generation.filename,
     )

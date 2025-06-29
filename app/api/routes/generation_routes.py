@@ -1,16 +1,19 @@
 import uuid
+from datetime import timedelta
 from typing import Annotated, Any
 
+import obstore as obs
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.config import get_settings
+from app.core.storage import store
 from app.db.models import GenerationORM
 from app.mappers import generation_mapper
 from app.models import Generation, OutputFormat, Ratio, Status, User
-from app.schemas import GenerationCreateResponse, GenerationList, GenerationStatus
+from app.schemas import GenerationCreateResponse, GenerationData, GenerationList, GenerationStatus
 from app.tasks import generate_image_task
 
 settings = get_settings()
@@ -41,8 +44,8 @@ async def create_generation(
     async with session.begin():
         session.add(generation_orm)
 
-        # Trigger the background task to generate the image
-        background_tasks.add_task(generate_image_task, generation_id=generation_orm.id)
+    # Trigger the background task to generate the image
+    background_tasks.add_task(generate_image_task, generation_id=generation.id)
 
     return GenerationCreateResponse(
         message="Generation request created successfully",
@@ -66,12 +69,20 @@ async def get_generations(
     select_statement = select(GenerationORM).where(GenerationORM.user_id == current_user.id)
     result = await session.execute(select_statement)
     generations_orm = result.scalars().all()
-    generations = [generation_mapper.orm_to_domain(gen) for gen in generations_orm]
 
-    return {"count": count, "data": generations}
+    data = []
+    for generation_orm in generations_orm:
+        generation_data = GenerationData.model_validate(generation_orm)
+        if generation_orm.filename:
+            generation_data.preview_url = await obs.sign_async(
+                store, "GET", generation_orm.filename, expires_in=timedelta(minutes=5)
+            )
+        data.append(generation_data)
+
+    return GenerationList(count=count, data=data)
 
 
-@router.get("/generations/{generation_id}", response_model=Generation)
+@router.get("/generations/{generation_id}", response_model=GenerationData)
 async def get_generation(
     generation_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -89,7 +100,12 @@ async def get_generation(
     if not generation_orm:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Generation not found")
 
-    return generation_mapper.orm_to_domain(generation_orm)
+    generation_data = GenerationData.model_validate(generation_orm)
+    if generation_orm.filename:
+        generation_data.preview_url = await obs.sign_async(
+            store, "GET", generation_orm.filename, expires_in=timedelta(minutes=5)
+        )
+    return generation_data
 
 
 @router.get("/generations/{generation_id}/status", response_model=GenerationStatus)
@@ -133,3 +149,5 @@ async def delete_generation(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Generation not found")
 
         await session.delete(generation_orm)
+        if generation_orm.filename:
+            await obs.delete_async(store, generation_orm.filename)
