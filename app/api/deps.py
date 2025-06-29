@@ -9,8 +9,6 @@ from app.config import get_settings
 from app.core.auth import GoogleOAuth2Provider
 from app.db.config import SessionLocal
 from app.db.models import UserORM
-from app.mappers import user_mapper
-from app.models import User
 
 settings = get_settings()
 
@@ -32,7 +30,7 @@ async def get_db() -> AsyncGenerator[AsyncSession]:
 async def get_current_user(
     user_id: Annotated[uuid.UUID, Cookie()],
     session: Annotated[AsyncSession, Depends(get_db)],
-) -> User:
+) -> UserORM:
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -48,6 +46,4 @@ async def get_current_user(
                 detail="User not found",
             )
 
-        user = user_mapper.orm_to_domain(user_orm)
-
-    return user
+    return user_orm

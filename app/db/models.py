@@ -1,12 +1,42 @@
 import uuid
 from datetime import UTC, datetime
+from enum import StrEnum
 
 from sqlalchemy import ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy.types import DateTime, Enum, String
+from sqlalchemy.types import DateTime, Enum, Integer, String
 
-from app.models import OutputFormat, Ratio, Status
+
+class OutputFormat(StrEnum):
+    """Enumeration for output formats of generated images."""
+
+    PNG = "png"
+    JPG = "jpg"
+
+
+class Ratio(StrEnum):
+    """Enumeration for aspect ratios of generated images."""
+
+    RATIO_1_1 = "1:1"
+    RATIO_16_9 = "16:9"
+    RATIO_4_3 = "4:3"
+
+
+class Status(StrEnum):
+    """Enumeration for the status of a generation request."""
+
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+
+class ContentType(StrEnum):
+    """Enumeration for content types of generated images."""
+
+    PNG = "image/png"
+    JPG = "image/jpeg"
 
 
 class Base(DeclarativeBase):
@@ -54,6 +84,8 @@ class GenerationORM(Base):
     status: Mapped[Status] = mapped_column(Enum(Status), nullable=False)
     error_message: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     filename: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    content_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     # Relationships
     user: Mapped[UserORM] = relationship("UserORM", back_populates="generations")

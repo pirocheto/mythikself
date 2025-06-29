@@ -10,8 +10,6 @@ from app.api.deps import get_current_user, get_db, get_google_auth_provider
 from app.config import get_settings
 from app.core.auth import GoogleOAuth2Provider
 from app.db.models import UserORM
-from app.mappers import user_mapper
-from app.models import User
 from app.schemas import UserProfile
 
 settings = get_settings()
@@ -46,14 +44,13 @@ async def auth_via_google(
 
         if not user_orm:
             # If user does not exist, create a new user
-            user = User(
+            user_orm = UserORM(
                 google_id=user_info["id"],
                 email=user_info["email"],
                 name=user_info["name"],
                 picture=user_info.get("picture"),
                 last_login=datetime.now(UTC),
             )
-            user_orm = user_mapper.domain_to_orm(user)
             session.add(user_orm)
         else:
             # If user exists, update the user information
@@ -62,12 +59,10 @@ async def auth_via_google(
             user_orm.picture = user_info.get("picture")
             user_orm.last_login = datetime.now(UTC)
 
-        user_id = user_orm.id
-
     response = RedirectResponse("/users/profile")
     response.set_cookie(
         key="user_id",
-        value=str(user_id),
+        value=str(user_orm.id),
         httponly=True,
         secure=settings.ENVIRONMENT != "local",
         samesite="lax",
@@ -76,6 +71,6 @@ async def auth_via_google(
 
 
 @router.get("/users/profile", response_model=UserProfile)
-async def get_profile(current_user: Annotated[User, Depends(get_current_user)]) -> Any:
+async def get_profile(current_user: Annotated[UserORM, Depends(get_current_user)]) -> Any:
     """Returns the profile of the currently authenticated user."""
     return current_user
