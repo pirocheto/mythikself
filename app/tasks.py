@@ -4,6 +4,8 @@ from typing import cast
 import obstore as obs
 import replicate
 from replicate.helpers import FileOutput
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
 from app.core.storage import store
@@ -25,7 +27,7 @@ async def generate_image_task(generation_id: uuid.UUID) -> None:
 
     try:
         # Run the image generation model using Replicate
-        model_id = "black-forest-labs/flux-schnell"
+        model_id = settings.REPLICATE_MODEL_ID
         input = {"prompt": generation_orm.prompt}
         output = await replicate.async_run(model_id, input=input)
         output = cast(list[FileOutput], output)
@@ -39,13 +41,22 @@ async def generate_image_task(generation_id: uuid.UUID) -> None:
         # Update the generation record in the database
         async with SessionLocal() as session:
             async with session.begin():
-                generation_orm = await session.get(GenerationORM, generation_id)
+                statement = (
+                    select(GenerationORM)
+                    .options(selectinload(GenerationORM.user))
+                    .where(GenerationORM.id == generation_id)
+                )
+                result = await session.execute(statement)
+                generation_orm = result.scalar_one_or_none()
+
                 if not generation_orm:
                     raise ValueError(f"Generation with ID {generation_id} not found")
+
                 generation_orm.status = Status.COMPLETED
                 generation_orm.size = len(file_bytes)
                 generation_orm.filename = filename
                 generation_orm.content_type = f"image/{generation_orm.output_format.value}"
+                generation_orm.user.credits -= settings.GENERATION_COST
 
     except Exception as err:
         async with SessionLocal() as session:

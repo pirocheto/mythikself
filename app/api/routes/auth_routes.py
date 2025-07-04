@@ -10,7 +10,7 @@ from app.api.deps import get_current_user, get_db, get_google_auth_provider
 from app.config import get_settings
 from app.core.auth import GoogleOAuth2Provider
 from app.db.models import UserORM
-from app.schemas import UserProfile
+from app.schemas.users import UserProfile
 
 settings = get_settings()
 

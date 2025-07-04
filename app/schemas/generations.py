@@ -1,20 +1,9 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict
 from pydantic.types import UUID4
 
 from app.db.models import ContentType, OutputFormat, Ratio, Status
-
-
-class UserProfile(BaseModel):
-    """Schema for user profile information."""
-
-    id: UUID4
-    email: EmailStr
-    name: str
-    picture: str
-    created_at: datetime
-    last_login: datetime | None = None
 
 
 class GenerationData(BaseModel):

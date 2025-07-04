@@ -59,6 +59,7 @@ class UserORM(Base):
     picture: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(True), nullable=False, default=datetime.now(UTC))
     last_login: Mapped[datetime | None] = mapped_column(DateTime(True), nullable=True)
+    credits: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
 
     # Relationships
     generations: Mapped[list["GenerationORM"]] = relationship(

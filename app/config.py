@@ -104,6 +104,8 @@ class Settings(BaseSettings):
 
     REPLICATE_API_KEY: str = "your-replicate-api-key"
     """The API key for the Replicate service, used for AI model inference."""
+    REPLICATE_MODEL_ID: str = "black-forest-labs/flux-schnell"
+    """The ID of the Replicate model to use for image generation."""
 
     GOOGLE_OAUTH2_CLIENT_ID: str = "your-google-client-id"
     """Google OAuth2 client ID for authentication."""
@@ -140,6 +142,9 @@ class Settings(BaseSettings):
         if not self.EMAILS_FROM_NAME:
             self.EMAILS_FROM_NAME = self.PROJECT_NAME
         return self
+
+    GENERATION_COST: int = 10
+    """The number of credits deducted per image generation."""
 
     @property
     @computed_field

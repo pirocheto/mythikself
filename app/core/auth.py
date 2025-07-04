@@ -37,6 +37,7 @@ class GoogleOAuth2Provider:
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
             "scope": "openid email profile",
+            # "prompt": "consent",
         }
         query_string = urlencode(params)
         return f"https://accounts.google.com/o/oauth2/auth?{query_string}"
@@ -53,6 +54,7 @@ class GoogleOAuth2Provider:
                     "client_secret": self.client_secret,
                     "grant_type": "authorization_code",
                     "redirect_uri": self.redirect_uri,
+                    "access_type": "offline",
                 },
             )
 

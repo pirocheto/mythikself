@@ -3,7 +3,7 @@ from datetime import timedelta
 from typing import Annotated, Any
 
 import obstore as obs
-from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +11,13 @@ from app.api.deps import get_current_user, get_db
 from app.config import get_settings
 from app.core.storage import store
 from app.db.models import GenerationORM, OutputFormat, Ratio, Status, UserORM
-from app.schemas import DownloadURLResponse, GenerationCreateResponse, GenerationData, GenerationList, GenerationStatus
+from app.schemas.generations import (
+    DownloadURLResponse,
+    GenerationCreateResponse,
+    GenerationData,
+    GenerationList,
+    GenerationStatus,
+)
 from app.tasks import generate_image_task
 
 settings = get_settings()
@@ -29,6 +35,12 @@ async def create_generation(
     ratio: Annotated[Ratio, Form()] = Ratio.RATIO_1_1,
 ) -> Any:
     """Create a new generation request."""
+
+    if current_user.credits <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have enough credits to create a generation request.",
+        )
 
     generation_orm = GenerationORM(
         prompt=prompt,
@@ -53,6 +65,8 @@ async def create_generation(
 async def get_generations(
     current_user: Annotated[UserORM, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(le=100)] = 10,
 ) -> Any:
     """Retrieve all generations for the current user."""
 
@@ -61,8 +75,14 @@ async def get_generations(
     count_result = await session.execute(count_statement)
     count = count_result.scalars().one()
 
-    # Get the list of generations for the current user
-    select_statement = select(GenerationORM).where(GenerationORM.user_id == current_user.id)
+    # Get the list of generations for the current user with pagination
+    select_statement = (
+        select(GenerationORM)
+        .where(GenerationORM.user_id == current_user.id)
+        .offset(offset)
+        .limit(limit)
+        .order_by(GenerationORM.created_at.desc())
+    )
     result = await session.execute(select_statement)
     generations_orm = result.scalars().all()
 
@@ -119,13 +139,12 @@ async def download_generation(
     result = await session.execute(statement)
     generation_orm = result.scalars().one_or_none()
 
-    if not generation_orm or not generation_orm.filename:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Generation not found or no file available")
+    if not generation_orm:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Generation not found")
     if not generation_orm.filename:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No file available for this generation")
 
     expires_in = timedelta(minutes=5)
-
     download_url = await obs.sign_async(store, "GET", generation_orm.filename, expires_in=expires_in)
     filename = f"{uuid.uuid4()}.{generation_orm.output_format.value}"
 
